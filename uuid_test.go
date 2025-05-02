@@ -641,6 +641,32 @@ func FuzzFromBytes(f *testing.F) {
 	})
 }
 
+// TestStrictValidate checks various scenarios for the StrictValidate function
+func TestStrictValidate(t *testing.T) {
+	testCases := []struct {
+		name   string
+		input  string
+		expect error
+	}{
+		{"Valid UUID", "123e4567-e89b-12d3-a456-426655440000", nil},
+		{"Valid UUID with URN", "urn:uuid:123e4567-e89b-12d3-a456-426655440000", nil},
+		{"Nonstandard UUID with Braces", "{123e4567-e89b-12d3-a456-426655440000}", errors.New("invalid UUID length: 38")},
+		{"Nonstandard UUID No Hyphens", "123e4567e89b12d3a456426655440000", errors.New("invalid UUID length: 32")},
+		{"Invalid UUID", "invalid-uuid", errors.New("invalid UUID length: 12")},
+		{"Invalid Length", "123", fmt.Errorf("invalid UUID length: %d", len("123"))},
+		{"Invalid URN Prefix", "urn:test:123e4567-e89b-12d3-a456-426655440000", fmt.Errorf("invalid urn prefix: %q", "urn:test:")},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := StrictValidate(tc.input)
+			if (err != nil) != (tc.expect != nil) || (err != nil && err.Error() != tc.expect.Error()) {
+				t.Errorf("StrictValidate(%q) = %v, want %v", tc.input, err, tc.expect)
+			}
+		})
+	}
+}
+
 // TestValidate checks various scenarios for the Validate function
 func TestValidate(t *testing.T) {
 	testCases := []struct {
@@ -669,8 +695,10 @@ func TestValidate(t *testing.T) {
 	}
 }
 
-var asString = "f47ac10b-58cc-0372-8567-0e02b2c3d479"
-var asBytes = []byte(asString)
+var (
+	asString = "f47ac10b-58cc-0372-8567-0e02b2c3d479"
+	asBytes  = []byte(asString)
+)
 
 func BenchmarkParse(b *testing.B) {
 	for i := 0; i < b.N; i++ {
@@ -935,7 +963,7 @@ func TestVersion7Monotonicity(t *testing.T) {
 type fakeRand struct{}
 
 func (g fakeRand) Read(bs []byte) (int, error) {
-	for i, _ := range bs {
+	for i := range bs {
 		bs[i] = 0x88
 	}
 	return len(bs), nil

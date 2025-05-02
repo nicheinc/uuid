@@ -149,10 +149,8 @@ func Parse(s string) (UUID, error) {
 			}
 		}
 		return uuid, nil
-	default:
-		return uuid, invalidLengthError{len(s)}
 	}
-	return Parse(s)
+	return StrictParse(s)
 }
 
 // StrictParseBytes is like StrictParse, except it parses a byte slice instead
